@@ -45,7 +45,7 @@ static struct eri *delay_damage_ers; //For battle delay damage structures.
 #endif
 
 // Early declaration
-int32 battle_get_weapon_element(const Damage& dmg, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv, int16 weapon_position, bool calc_for_damage_only);
+int32 battle_get_weapon_element(const Damage& dmg, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv, equip_index weapon_position, bool calc_for_damage_only);
 int32 battle_get_magic_element(const Damage& dmg, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv);
 int32 battle_get_misc_element(const Damage& dmg, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv);
 static void battle_calc_defense_reduction( Damage* wd, block_list* src, block_list* target, uint16 skill_id, uint16 skill_lv );
@@ -3440,18 +3440,22 @@ static int32 battle_calc_equip_attack(block_list *src, int32 skill_id)
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
-int32 battle_get_weapon_element(const Damage& wd, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv, int16 weapon_position, bool calc_for_damage_only) {
+int32 battle_get_weapon_element(const Damage& wd, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv, equip_index weapon_position, bool calc_for_damage_only) {
+	int32 element = skill_get_ele(skill_id, skill_lv);
+
 	const map_session_data* sd = BL_CAST(BL_PC, &src);
 	const status_change* sc = status_get_sc(&src);
 	const status_data* sstatus = status_get_status_data(src);
-	int32 element = skill_get_ele(skill_id, skill_lv);
 
 	//Take weapon's element
 	if( !skill_id || element == ELE_WEAPON ) {
-		if (weapon_position == EQI_HAND_R)
-			element = sstatus->rhw.ele;
-		else
-			element = sstatus->lhw.ele;
+		if (sstatus != nullptr) {
+			if (weapon_position == EQI_HAND_R)
+				element = sstatus->rhw.ele;
+			else
+				element = sstatus->lhw.ele;
+		}
+
 		if(is_skill_using_arrow(&src, skill_id) && sd && sd->bonus.arrow_ele && weapon_position == EQI_HAND_R)
 			element = sd->bonus.arrow_ele;
 		if(sd && sd->spiritcharm_type != CHARM_TYPE_NONE && sd->spiritcharm >= MAX_SPIRITCHARM)
@@ -3482,15 +3486,13 @@ int32 battle_get_magic_element(const Damage& dmg, const block_list& src, const b
 	int32 element = skill_get_ele(skill_id, skill_lv);
 
 	switch (element) {
-		case ELE_WEAPON: { // pl = -1 : the skill takes the weapon's element
-			const status_data* sstatus = status_get_status_data(src);
-	
-			element = sstatus->rhw.ele;
+		case ELE_WEAPON: // pl = -1 : the skill takes the weapon's element
+			if (const status_data* sstatus = status_get_status_data(src); sstatus != nullptr)
+				element = sstatus->rhw.ele;
 
 			if (const map_session_data* sd = BL_CAST(BL_PC, &src); sd != nullptr && sd->spiritcharm_type != CHARM_TYPE_NONE && sd->spiritcharm >= MAX_SPIRITCHARM)
 				element = sd->spiritcharm_type; // Summoning 10 spiritcharm will endow your weapon
 			break;
-		}
 		case ELE_ENDOWED: // Use status element
 			element = status_get_attack_sc_element(&src, status_get_sc(&src));
 			break;
@@ -3509,7 +3511,7 @@ int32 battle_get_magic_element(const Damage& dmg, const block_list& src, const b
 
 int32 battle_get_misc_element(const Damage& dmg, const block_list& src, const block_list& target, uint16 skill_id, uint16 skill_lv) {
 	int32 element = skill_get_ele(skill_id, skill_lv);
-	
+
 	switch (element) {
 		case ELE_WEAPON:
 		case ELE_ENDOWED:	// Attack that takes weapon's element for misc attacks? Make it neutral [Skotlex]
