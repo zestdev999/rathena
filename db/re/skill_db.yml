@@ -37113,7 +37113,7 @@ Body:
     FixedCastTime: 1500
     Requires:
       SpCost: 150
-      ApCost: 20
+      ApCost: 15
     Unit:
       Id: Pneumaticus_Procella
       Range:
